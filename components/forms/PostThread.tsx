@@ -1,24 +1,29 @@
 'use client';
 
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { createThread } from '@/lib/actions/thread.actions';
-import { ThreadValidation } from '@/lib/validation/thread';
+import * as z from 'zod';
+import { useForm } from 'react-hook-form';
+import { useOrganization } from '@clerk/nextjs';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePathname, useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 
-type Props = {
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+
+import { ThreadValidation } from '@/lib/validation/thread';
+import { createThread } from '@/lib/actions/thread.actions';
+
+interface Props {
     userId: string;
-};
+}
 
-const PostThread = ({ userId }: Props) => {
+function PostThread({ userId }: Props) {
     const router = useRouter();
     const pathname = usePathname();
 
-    const form = useForm({
+    const { organization } = useOrganization();
+
+    const form = useForm<z.infer<typeof ThreadValidation>>({
         resolver: zodResolver(ThreadValidation),
         defaultValues: {
             thread: '',
@@ -27,10 +32,16 @@ const PostThread = ({ userId }: Props) => {
     });
 
     const onSubmit = async (values: z.infer<typeof ThreadValidation>) => {
-        await createThread({ text: values.thread, author: userId, communityId: null, path: pathname });
+        await createThread({
+            text: values.thread,
+            author: userId,
+            communityId: organization ? organization.id : null,
+            path: pathname,
+        });
 
         router.push('/');
     };
+
     return (
         <Form {...form}>
             <form className="mt-10 flex flex-col justify-start gap-10" onSubmit={form.handleSubmit(onSubmit)}>
@@ -47,12 +58,13 @@ const PostThread = ({ userId }: Props) => {
                         </FormItem>
                     )}
                 />
+
                 <Button type="submit" className="bg-primary-500">
                     Post Thread
                 </Button>
             </form>
         </Form>
     );
-};
+}
 
 export default PostThread;
